@@ -28,7 +28,17 @@ const verifySignature = () => {
   }
 }
 
-app.post('/api/webhooks/github', express.json(), verifySignature(), (request, response) => {
+const eventFilter = () => {
+  return (request, response, next) => {
+    if (request.headers['x-github-event'] === 'push') {
+      next();
+    } else {
+      next(createError(400, new Error('Invalid event type')));
+    }
+  }
+}
+
+app.post('/api/webhooks/github', express.json(), verifySignature(), eventFilter(), (request, response) => {
   response.send(request.body);
   console.log(JSON.stringify(request.body));
 })
