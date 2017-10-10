@@ -16,6 +16,7 @@ const config = [
 
 app.post('/api/webhooks/github', express.json(), (request, response) => {
   response.send(request.body);
+  console.log(JSON.stringify(request.body));
 })
 
 app.ws('/ws', (ws, request) => {
