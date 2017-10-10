@@ -1,5 +1,7 @@
 import express from 'express';
 import expressWs from 'express-ws';
+import { createHmac } from 'crypto';
+import createError from 'http-errors';
 
 const app = express();
 const wss = expressWs(app).getWss();
@@ -12,9 +14,21 @@ const config = [
   },
 ]
 
+const verifySignature = () => {
+  return (request, response, next) => {
+    const hmac = createHmac('sha1', process.env.GITHUB_WEBHOOK_SECRET)
+      .update(JSON.stringify(request.body))
+      .digest('hex');
 
+    if (request.headers['x-hub-signature'] === `sha1=${hmac}`) {
+      next();
+    } else {
+      next(createError(400, new Error('Invalid signature')));
+    }
+  }
+}
 
-app.post('/api/webhooks/github', express.json(), (request, response) => {
+app.post('/api/webhooks/github', express.json(), verifySignature(), (request, response) => {
   response.send(request.body);
   console.log(JSON.stringify(request.body));
 })
