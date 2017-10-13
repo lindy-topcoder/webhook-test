@@ -20,7 +20,7 @@ const apis = [
     repositories: [
       {
         sshUrl: 'git@github.com:appirio-tech/tc1-api-core.git',
-        branch: 'devx', //no swagger in master
+        branch: 'dev', //no swagger in master
         path: 'tech.core/tech.core.service.identity/doc/swagger.yaml',
       },
       {
