@@ -1,5 +1,7 @@
 import {Clone, Cred, Repository} from 'nodegit';
-import logger from 'winston';
+import Logger from './Logger';
+
+const logger = Logger('GitRepository');
 
 import * as fs from 'fs';
 import rimraf from 'rimraf';
@@ -49,17 +51,21 @@ export default class GitRepository
                     })
                 })
                 .catch(e => {
-                  logger.error('checkout error', {error: e, repository: this.sshUrl, branch: this.branch});
+                  logger.error('checkout error', {error: e.message, repository: this.sshUrl, branch: this.branch});
                   reject(e);
                 })
             })
             .catch(e => {
-              logger.error('cloning error', {error: e, repository: this.sshUrl, branch: this.branch});
+              logger.error('cloning error', {error: e.message, repository: this.sshUrl, branch: this.branch});
               reject(e);
             })
         });
       })
     })
+  }
+
+  cleanup () {
+    this.repo.cleanup();
   }
 
   getFile (path) {

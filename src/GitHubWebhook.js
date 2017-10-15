@@ -75,7 +75,6 @@ export default class GitHubWebhook extends EventEmitter
 
   request (request, response) {
     this.emit(VALID_WEBHOOK, request.body);
-    response.status(200);
-    response.send();
+    response.status(200).send();
   }
 }

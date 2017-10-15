@@ -1,7 +1,11 @@
 import PromisePool from 'es6-promise-pool';
-import logger from 'winston';
+import rimraf from 'rimraf';
+import * as fs from 'fs';
 
+import Logger from './Logger';
 import GitRepository from './GitRepository';
+
+const logger = Logger('SwaggerHubIntegratorJob');
 
 export default class SwaggerHubIntegratorJob
 {
@@ -15,22 +19,66 @@ export default class SwaggerHubIntegratorJob
     this.swaggerHubClient = swaggerHubClient;
     this.swaggerHubOwner = swaggerHubOwner;
     this.swaggerHubApi = swaggerHubApi;
+
+    this.path = `${this.basePath}/${this.id}`;
   }
 
   run () {
 
-    logger.info('starting job', {id: this.id});
+    logger.info('starting', {id: this.id});
 
     this.cloneAll()
-      .then(results => results.filter(result => !result.error))
-      .then(validResults => this.combiner.combine(validResults.map(validResult => `${validResult.repository.path}/${validResult.swaggerDocument.path}`)))
-      .then(swaggerDoc => this.swaggerHubClient.save(this.swaggerHubOwner, this.swaggerHubApi, swaggerDoc))
-      .then(response => {
+      .then(results => {
+        const validResults = results.filter(result => !result.error);
 
+        validResults.forEach(validResult => {
+          validResult.repository.cleanup();
+        })
+
+        const validPaths = validResults
+          .map(validResult => {
+            return `${validResult.repository.path}/${validResult.swaggerDocument.path}`
+          })
+          .filter(path => {
+            try {
+              fs.accessSync(path)
+              return true;
+            } catch (e) {
+              logger.info('no file found', {id: this.id, path: path});
+              return false;
+            }
+          })
+
+        logger.info(`using ${validPaths.length} of ${results.length} repositories`);
+        return validPaths;
+      })
+      .then(validPaths => this.combiner.combine(validPaths))
+      .then(swaggerDoc => this.swaggerHubClient.save(this.swaggerHubOwner, this.swaggerHubApi, swaggerDoc))
+      .then(response => this.cleanup())
+      .then(() => {
+        logger.info('complete', {id: this.id});
       })
       .catch (e => {
-        // console.log(e);
+        logger.info('error', {id: this.id, error: e});
+        this.cleanup()
+          .catch(e => {
+
+          })
       })
+  }
+
+  cleanup () {
+    logger.info('cleaning up', {id: this.id});
+
+    return new Promise ((resolve, reject) => {
+      rimraf(this.path, (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    })
   }
 
   cloneAll () {
@@ -48,7 +96,7 @@ export default class SwaggerHubIntegratorJob
       return new Promise((resolve) => {
         const repository = new GitRepository(swaggerDocument.sshUrl, swaggerDocument.branch, this.publicKey, this.privateKey);
         repository
-          .clone(`${this.basePath}/${this.id}`)
+          .clone(this.path)
           .then(() => {
             resolve({
               repository: repository,
