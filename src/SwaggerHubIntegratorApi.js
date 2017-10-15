@@ -27,8 +27,7 @@ export default class SwaggerHubIntegratorApi {
   get router ()
   {
     const allRepositories = this.apis.reduce((accumulator, api) => {
-      accumulator.concat(api.repositories)
-      return accumulator;
+      return accumulator.concat(api.repositories)
     }, [])
 
     const githubWebhookValidator = new GitHubWebhookValidator(this.gitHubWebHookSecret, ['push'], allRepositories);
